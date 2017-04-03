@@ -1,18 +1,18 @@
 player = {}
 score = {}
 
-img_scale = 0.1
+local img_scale = 0.1
 
-function love.load(  )
+function love.load()
 	-- player emoji
 	player.x = love.graphics.getWidth() / 2
 	player.y = love.graphics.getHeight() / 2
 	player.img = love.graphics.newImage('perfect.png')
-	player.momentum = 10
+	player.momentum = 1
 	player.friction = 0.97
-	player.velo = {}
-		player.velo.x = 0
-		player.velo.y = 0
+	player.velo = { x = 0, y = 0 }
+		-- player.velo.x = 0
+		-- player.velo.y = 0
 	player.rotation = 0
 
 	-- score board
@@ -22,9 +22,6 @@ function love.load(  )
 	score.y = 40
 	score.count = 0
 	score.rotation = 0
-
-	-- player input
-	love.keyboard.setKeyRepeat(true)
 end
 
 function score.update( plus )
@@ -35,45 +32,54 @@ function score.update( plus )
 	end
 end
 
-function player.impact( dir )
+function player.impact( dim )
 	score.update( 1 )
-	if dir ~= "y" then
-		player.velo.x = -(player.velo.x)
-	else
-		player.velo.y = -(player.velo.y)
-	end
+	player.velo[dim] = -(player.velo[dim])
 	player.rotation = player.rotation + 1
 end
 
-local keys = {
-	escape	= love.event.quit,
-	up 		= {"y", -1},
-	down 	= {"y",  1},
-	left	= {"x", -1},
-	right 	= {"x",  1}
+function player.move( dim, value )
+	player.velo[dim] = player.velo[dim] + value * player.momentum
+	-- score.count = go
+end
+
+-- user actions: function w/ optional table of arguments
+local bindings = {
+	escape 	= function () loop.event.quit() end,
+	up 		= function () player.move("y", -1) end,
+	down 	= function () player.move("y",  1) end,
+	left	= function () player.move("x", -1) end,
+	right 	= function () player.move("x",  1) end,
+	stick 	= function (value) player.move("x", value) end
 }
 
+-- stores list of currently held keys
+local heldKeys = {}
+
+-- add/subtract keys from process-list
 function love.keypressed( k )
-	local act = keys[k]
-	if act then
-		return act()
-		-- player.velo[act[1]] = player.velo[act[1]] + act[2] * player.momentum
+	local action = bindings[k]
+	heldKeys[k] = action
+end
+
+function love.keyreleased( k )
+	heldKeys[k] = nil
+end
+
+function inputHandler()
+	for i,fn in pairs(heldKeys) do
+		return fn()
 	end
 end
 
-function love.update( dt )
-	-- input gives momentum to player
-	-- if love.keyboard.isDown('up') then
-	-- 	player.velo.y = player.velo.y - player.momentum * dt
-	-- elseif love.keyboard.isDown('down') then
-	-- 	player.velo.y = player.velo.y + player.momentum * dt
-	-- end
+-- function love.mousemoved( x, y, dx, dy )
+-- 	player.move("x", dx / 10)
+-- 	player.move("y", dy / 10)
+-- end
 
-	-- if love.keyboard.isDown('left') then
-	-- 	player.velo.x = player.velo.x - player.momentum * dt
-	-- elseif love.keyboard.isDown('right') then
-	-- 	player.velo.x = player.velo.x + player.momentum * dt
-	-- end
+function love.update( dt )
+	-- input handler
+	inputHandler()
 
 	-- apply momentum to player position with limits
 	if player.velo.y ~= 0 then
