@@ -4,17 +4,42 @@ score = {}
 local img_scale = 0.1
 
 function love.load()
-	-- player emoji
-	player.x = love.graphics.getWidth() / 2
-	player.y = love.graphics.getHeight() / 2
-	player.img = love.graphics.newImage('perfect.png')
-	player.momentum = 1
-	player.friction = 0.97
-	player.velo = { x = 0, y = 0 }
-		-- player.velo.x = 0
-		-- player.velo.y = 0
-	player.rotation = 0
+	-- graphics setup
+	love.graphics.setBackgroundColor(104, 136, 200)
+	love.window.setMode(650, 650)
 
+	-- physics environment
+	love.physics.setMeter(64)
+	world = love.physics.newWorld(0, 0, true)
+	local w, h = love.graphics.getDimensions(); w, h = w/2, h/2
+
+	objects = {}
+	objects.bound = {}
+	objects.bound.body = love.physics.newBody(world, 650/2, 650/2)
+	love.physics.newFixture(objects.bound.body, love.physics.newEdgeShape(-w, h, w, h))
+	love.physics.newFixture(objects.bound.body, love.physics.newEdgeShape( w, h, w,-h))
+	love.physics.newFixture(objects.bound.body, love.physics.newEdgeShape( w,-h,-w,-h))
+	love.physics.newFixture(objects.bound.body, love.physics.newEdgeShape(-w,-h,-w, h))
+	-- objects.bound.fixture:setUserData(objects.bound)
+
+	objects.player = {}
+	objects.player.body = love.physics.newBody(world, 650/2, 650/2, "dynamic")
+	objects.player.shape = love.physics.newCircleShape(20)
+	objects.player.fixture = love.physics.newFixture(objects.player.body, objects.player.shape, 1)
+	objects.player.fixture:setRestitution(0.9)
+	objects.player.fixture:setUserData(objects.player)
+
+	objects.bouncer = {}
+	objects.bouncer.body = love.physics.newBody(world, 400, 200, "dynamic")
+	objects.bouncer.shape = love.physics.newRectangleShape(0, 0, 50, 100)
+	objects.bouncer.fixture = love.physics.newFixture(objects.bouncer.body, objects.bouncer.shape, 5)
+	objects.bouncer.fixture:setRestitution(1)
+	objects.bouncer.fixture:setUserData(objects.bouncer)
+	-- player.img = love.graphics.newImage('perfect.png')
+
+	-- physics callbacks
+	world:setCallbacks(beginContact)
+	
 	-- score board
 	mainFont = love.graphics.newFont("lekton.ttf", 30)
 	love.graphics.setFont(mainFont)
@@ -22,6 +47,13 @@ function love.load()
 	score.y = 40
 	score.count = 0
 	score.rotation = 0
+end
+
+function beginContact(objA, objB, coll)
+	-- print(objA)
+	if objA:getUserData() == objects.player or objB:getUserData() == objects.player then
+		print("you're dead")
+	end
 end
 
 function score.update( plus )
@@ -32,25 +64,14 @@ function score.update( plus )
 	end
 end
 
-function player.impact( dim )
-	score.update( 1 )
-	player.velo[dim] = -(player.velo[dim])
-	player.rotation = player.rotation + 1
-end
-
-function player.move( dim, value )
-	player.velo[dim] = player.velo[dim] + value * player.momentum
-	-- score.count = go
-end
-
 -- user actions: function w/ optional table of arguments
 local bindings = {
-	escape 	= function () loop.event.quit() end,
-	up 		= function () player.move("y", -1) end,
-	down 	= function () player.move("y",  1) end,
-	left	= function () player.move("x", -1) end,
-	right 	= function () player.move("x",  1) end,
-	stick 	= function (value) player.move("x", value) end
+	escape 	= function () love.event.quit() end,
+
+	a 		= function () objects.player.body:applyForce(-400,   0) end,
+	d 		= function () objects.player.body:applyForce( 400,   0) end,
+	s 		= function () objects.player.body:applyForce(   0, 400) end,
+	w 		= function () objects.player.body:applyForce(   0,-400) end,
 }
 
 -- stores list of currently held keys
@@ -72,45 +93,22 @@ function inputHandler()
 	end
 end
 
--- function love.mousemoved( x, y, dx, dy )
--- 	player.move("x", dx / 10)
--- 	player.move("y", dy / 10)
--- end
-
 function love.update( dt )
 	-- input handler
 	inputHandler()
 
-	-- apply momentum to player position with limits
-	if player.velo.y ~= 0 then
-		player.y = player.y + player.velo.y
-		player.velo.y = player.velo.y * player.friction
-		if player.y < 0 then
-			player.y = -(player.y)
-			player.impact("y")
-		elseif player.y > (love.graphics.getHeight() - player.img:getHeight()*img_scale) then
-			player.y = 2*(love.graphics.getHeight() - player.img:getHeight()*img_scale) - player.y
-			player.impact("y")
-		end
-	end
-
-	if player.velo.x ~= 0 then
-		player.x = player.x + player.velo.x
-		player.velo.x = player.velo.x * player.friction
-		if player.x < 0 then
-			player.x = -(player.x)
-			player.impact("x")
-		elseif player.x > (love.graphics.getWidth() - player.img:getWidth()*img_scale) then
-			player.x = 2*(love.graphics.getWidth() - player.img:getWidth()*img_scale) - player.x
-			player.impact("x")
-		end
-	end
-
+	world:update(dt)
 end
 
-function love.draw(  )
-	love.graphics.draw(player.img, player.x, player.y, player.rotation, img_scale, img_scale, 0, 32)
+function love.draw()
+	-- love.graphics.draw(player.img, player.x, player.y, player.rotation, img_scale, img_scale, 0, 32)
 	love.graphics.print(score.count,score.x,score.y, score.rotation,1,1,30,30)
+
+	love.graphics.setColor(193, 47, 14) --set the drawing color to red for the player
+	love.graphics.circle("fill", objects.player.body:getX(), objects.player.body:getY(), objects.player.shape:getRadius())
+
+	love.graphics.setColor(50, 50, 50) -- set the drawing color to grey for the bouncers
+	love.graphics.polygon("fill", objects.bouncer.body:getWorldPoints(objects.bouncer.shape:getPoints()))
 end
 
 
