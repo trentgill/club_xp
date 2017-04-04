@@ -1,4 +1,5 @@
-player = {}
+local enemies = require("scripts.enemies")
+
 score = {}
 
 local img_scale = 0.1
@@ -16,13 +17,13 @@ function love.load()
 	local w, h = love.graphics.getDimensions(); w, h = w/2, h/2
 
 	objects = {}
+
 	objects.bound = {}
 	objects.bound.body = lPh.newBody(world, 650/2, 650/2)
 	lPh.newFixture(objects.bound.body, lPh.newEdgeShape(-w, h, w, h))
 	lPh.newFixture(objects.bound.body, lPh.newEdgeShape( w, h, w,-h))
 	lPh.newFixture(objects.bound.body, lPh.newEdgeShape( w,-h,-w,-h))
 	lPh.newFixture(objects.bound.body, lPh.newEdgeShape(-w,-h,-w, h))
-	-- objects.bound.fixture:setUserData(objects.bound)
 
 	objects.player = {}
 	objects.player.body = lPh.newBody(world, 650/2, 650/2, "dynamic")
@@ -31,24 +32,10 @@ function love.load()
 	objects.player.fixture:setRestitution(0.9)
 	objects.player.fixture:setUserData("you")
 
-	
+	-- generate table to store enemies & make 2
 	objects.bouncer = {}
-	local oB = objects.bouncer
-
-	oB[1] = {}
-	oB[1].body = lPh.newBody(world, 400, 200, "dynamic")
-	oB[1].shape = lPh.newRectangleShape(0, 0, 50, 100)
-	oB[1].fixture = lPh.newFixture(oB[1].body, oB[1].shape, 5)
-	oB[1].fixture:setRestitution(1)
-	oB[1].fixture:setUserData("enemy")
-	-- player.img = love.graphics.newImage('perfect.png')
-
-	oB[2] = {}
-	oB[2].body = lPh.newBody(world, 200, 200, "dynamic")
-	oB[2].shape = lPh.newRectangleShape(0, 0, 50, 100)
-	oB[2].fixture = lPh.newFixture(oB[2].body, oB[2].shape, 5)
-	oB[2].fixture:setRestitution(1)
-	oB[2].fixture:setUserData("enemy")
+	enemies.constructor( world, objects.bouncer, 400, 200 )
+	enemies.constructor( world, objects.bouncer, 200, 200 )
 
 	-- physics callbacks
 	world:setCallbacks(beginContact)
@@ -60,32 +47,6 @@ function love.load()
 	score.y = 40
 	score.count = 10
 	score.angle = 0
-end
-
--- enemy object class
-enemy = {}
-enemy.generateNew = 0 -- init to zero to avoid nil
-
-function enemy.generate( x, y )
-	local oB = objects.bouncer
-	
-	-- add a new entry in the enemy table
-	local n = (#oB) + 1
-	oB[n] = {}
-	oB[n].body = lPh.newBody(world, x, y, "dynamic")
-	oB[n].shape = lPh.newRectangleShape(0, 0, 50, 100)
-	oB[n].fixture = lPh.newFixture(oB[n].body, oB[n].shape, 5)
-	oB[n].fixture:setRestitution(1)
-	oB[n].fixture:setUserData("enemy")
-end
-
-local location = 0
-function enemy.process()	
-	if enemy.generateNew == 1 then
-		enemy.generateNew = 0
-		enemy.generate(location, 0)
-		location = location + 60
-	end
 end
 
 function score.update( plus )
@@ -105,10 +66,11 @@ function collidePlayerBounds(a, b, coll)
 	print("you're dizzy")
 end
 
+local new_enemies = 0
 function collidePlayerEnemy(a, b, coll)
 	print("pe")
 	score.update(-1)
-	enemy.generateNew = 1
+	new_enemies = new_enemies + 1
 end
 
 function collideEnemyEnemy(a, b, coll)
@@ -188,13 +150,11 @@ function love.update( dt )
 	inputHandler()
 
 	world:update(dt * gameSpeed)
-	enemy.process()
+	new_enemies = enemies.process(world, objects.bouncer, new_enemies)
 end
 
 function love.draw()
 	local lg, op, ob = love.graphics, objects.player, objects.bouncer
-
-	lg.print(score.count,score.x,score.y, score.angle,1,1,30,30)
 
 	lg.setColor(193, 47, 14)
 	lg.circle("fill", op.body:getX(), op.body:getY(), op.shape:getRadius())
@@ -203,9 +163,6 @@ function love.draw()
 	for i,ix in pairs(ob) do
 		lg.polygon("fill", ob[i].body:getWorldPoints(ob[i].shape:getPoints()))
 	end
+	lg.setColor(255,255,255)
+	lg.print(score.count,score.x,score.y, score.angle,1,1,30,30)
 end
-
-
-
-
-
