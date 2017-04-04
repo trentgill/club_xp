@@ -64,6 +64,8 @@ end
 
 -- enemy object class
 enemy = {}
+enemy.generateNew = 0 -- init to zero to avoid nil
+
 function enemy.generate( x, y )
 	local oB = objects.bouncer
 	
@@ -97,7 +99,6 @@ function score.update( plus )
 		gameSpeed = 0.15
 		score.count = 0
 	end
-	enemy.generateNew = 1
 end
 
 function collidePlayerBounds(a, b, coll)
@@ -107,6 +108,7 @@ end
 function collidePlayerEnemy(a, b, coll)
 	print("pe")
 	score.update(-1)
+	enemy.generateNew = 1
 end
 
 function collideEnemyEnemy(a, b, coll)
@@ -141,7 +143,12 @@ function beginContact(objA, objB, coll)
 	b = b or "bounds"
 
 	local act = collisions[a][b]
-	if act == nil then act = collisions[b][a] end
+	if act == nil then
+		act = collisions[b][a]
+		return act(objB, objA, coll) -- inverted action vars
+	else
+		return act(objA, objB, coll) -- standard vars
+	end
 
 	-- pass data to appropriate function
 	return act(objA, objB, coll)
