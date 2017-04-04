@@ -10,40 +10,45 @@ function love.load()
 	love.window.setMode(650, 650)
 
 	-- physics environment
-	love.physics.setMeter(64)
-	world = love.physics.newWorld(0, 0, true)
+	lPh = love.physics
+	lPh.setMeter(64)
+	world = lPh.newWorld(0, 0, true)
 	local w, h = love.graphics.getDimensions(); w, h = w/2, h/2
 
 	objects = {}
 	objects.bound = {}
-	objects.bound.body = love.physics.newBody(world, 650/2, 650/2)
-	love.physics.newFixture(objects.bound.body, love.physics.newEdgeShape(-w, h, w, h))
-	love.physics.newFixture(objects.bound.body, love.physics.newEdgeShape( w, h, w,-h))
-	love.physics.newFixture(objects.bound.body, love.physics.newEdgeShape( w,-h,-w,-h))
-	love.physics.newFixture(objects.bound.body, love.physics.newEdgeShape(-w,-h,-w, h))
+	objects.bound.body = lPh.newBody(world, 650/2, 650/2)
+	lPh.newFixture(objects.bound.body, lPh.newEdgeShape(-w, h, w, h))
+	lPh.newFixture(objects.bound.body, lPh.newEdgeShape( w, h, w,-h))
+	lPh.newFixture(objects.bound.body, lPh.newEdgeShape( w,-h,-w,-h))
+	lPh.newFixture(objects.bound.body, lPh.newEdgeShape(-w,-h,-w, h))
 	-- objects.bound.fixture:setUserData(objects.bound)
 
 	objects.player = {}
-	objects.player.body = love.physics.newBody(world, 650/2, 650/2, "dynamic")
-	objects.player.shape = love.physics.newCircleShape(20)
-	objects.player.fixture = love.physics.newFixture(objects.player.body, objects.player.shape, 1)
+	objects.player.body = lPh.newBody(world, 650/2, 650/2, "dynamic")
+	objects.player.shape = lPh.newCircleShape(20)
+	objects.player.fixture = lPh.newFixture(objects.player.body, objects.player.shape, 1)
 	objects.player.fixture:setRestitution(0.9)
 	objects.player.fixture:setUserData("you")
 
+	
 	objects.bouncer = {}
-	objects.bouncer.body = love.physics.newBody(world, 400, 200, "dynamic")
-	objects.bouncer.shape = love.physics.newRectangleShape(0, 0, 50, 100)
-	objects.bouncer.fixture = love.physics.newFixture(objects.bouncer.body, objects.bouncer.shape, 5)
-	objects.bouncer.fixture:setRestitution(1)
-	objects.bouncer.fixture:setUserData("enemy")
+	local oB = objects.bouncer
+
+	oB[1] = {}
+	oB[1].body = lPh.newBody(world, 400, 200, "dynamic")
+	oB[1].shape = lPh.newRectangleShape(0, 0, 50, 100)
+	oB[1].fixture = lPh.newFixture(oB[1].body, oB[1].shape, 5)
+	oB[1].fixture:setRestitution(1)
+	oB[1].fixture:setUserData("enemy")
 	-- player.img = love.graphics.newImage('perfect.png')
 
-	objects.bouncer2 = {}
-	objects.bouncer2.body = love.physics.newBody(world, 200, 200, "dynamic")
-	objects.bouncer2.shape = love.physics.newRectangleShape(0, 0, 50, 100)
-	objects.bouncer2.fixture = love.physics.newFixture(objects.bouncer2.body, objects.bouncer2.shape, 5)
-	objects.bouncer2.fixture:setRestitution(1)
-	objects.bouncer2.fixture:setUserData("enemy")
+	oB[2] = {}
+	oB[2].body = lPh.newBody(world, 200, 200, "dynamic")
+	oB[2].shape = lPh.newRectangleShape(0, 0, 50, 100)
+	oB[2].fixture = lPh.newFixture(oB[2].body, oB[2].shape, 5)
+	oB[2].fixture:setRestitution(1)
+	oB[2].fixture:setUserData("enemy")
 
 	-- physics callbacks
 	world:setCallbacks(beginContact)
@@ -54,20 +59,45 @@ function love.load()
 	score.x = 40
 	score.y = 40
 	score.count = 10
-	score.rotation = 0
+	score.angle = 0
+end
+
+-- enemy object class
+enemy = {}
+function enemy.generate( x, y )
+	local oB = objects.bouncer
+	
+	-- add a new entry in the enemy table
+	local n = (#oB) + 1
+	oB[n] = {}
+	oB[n].body = lPh.newBody(world, x, y, "dynamic")
+	oB[n].shape = lPh.newRectangleShape(0, 0, 50, 100)
+	oB[n].fixture = lPh.newFixture(oB[n].body, oB[n].shape, 5)
+	oB[n].fixture:setRestitution(1)
+	oB[n].fixture:setUserData("enemy")
+end
+
+local location = 0
+function enemy.process()	
+	if enemy.generateNew == 1 then
+		enemy.generateNew = 0
+		enemy.generate(location, 0)
+		location = location + 60
+	end
 end
 
 function score.update( plus )
 	score.count = score.count + plus
-	score.rotation = score.rotation + plus*5
-	if score.rotation > (2 * math.pi) then
-		score.rotation = score.rotation - (2 * math.pi)
+	score.angle = score.angle + plus*5
+	if score.angle > (2 * math.pi) then
+		score.angle = score.angle - (2 * math.pi)
 	end
 	if score.count <= 0 then
 		print("game over")
 		gameSpeed = 0.15
 		score.count = 0
 	end
+	enemy.generateNew = 1
 end
 
 function collidePlayerBounds(a, b, coll)
@@ -151,19 +181,21 @@ function love.update( dt )
 	inputHandler()
 
 	world:update(dt * gameSpeed)
+	enemy.process()
 end
 
 function love.draw()
-	-- love.graphics.draw(player.img, player.x, player.y, player.rotation, img_scale, img_scale, 0, 32)
-	love.graphics.print(score.count,score.x,score.y, score.rotation,1,1,30,30)
+	local lg, op, ob = love.graphics, objects.player, objects.bouncer
 
-	love.graphics.setColor(193, 47, 14) --set the drawing color to red for the player
-	love.graphics.circle("fill", objects.player.body:getX(), objects.player.body:getY(), objects.player.shape:getRadius())
+	lg.print(score.count,score.x,score.y, score.angle,1,1,30,30)
 
-	love.graphics.setColor(50, 50, 50) -- set the drawing color to grey for the bouncers
-	love.graphics.polygon("fill", objects.bouncer.body:getWorldPoints(objects.bouncer.shape:getPoints()))
-	love.graphics.setColor(70, 30, 80) -- set the drawing color to grey for the bouncers
-	love.graphics.polygon("fill", objects.bouncer2.body:getWorldPoints(objects.bouncer2.shape:getPoints()))
+	lg.setColor(193, 47, 14)
+	lg.circle("fill", op.body:getX(), op.body:getY(), op.shape:getRadius())
+
+	lg.setColor(50, 50, 50)
+	for i,ix in pairs(ob) do
+		lg.polygon("fill", ob[i].body:getWorldPoints(ob[i].shape:getPoints()))
+	end
 end
 
 
