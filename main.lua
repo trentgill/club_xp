@@ -2,6 +2,7 @@ player = {}
 score = {}
 
 local img_scale = 0.1
+local gameSpeed = 1
 
 function love.load()
 	-- graphics setup
@@ -27,15 +28,22 @@ function love.load()
 	objects.player.shape = love.physics.newCircleShape(20)
 	objects.player.fixture = love.physics.newFixture(objects.player.body, objects.player.shape, 1)
 	objects.player.fixture:setRestitution(0.9)
-	objects.player.fixture:setUserData(objects.player)
+	objects.player.fixture:setUserData("you")
 
 	objects.bouncer = {}
 	objects.bouncer.body = love.physics.newBody(world, 400, 200, "dynamic")
 	objects.bouncer.shape = love.physics.newRectangleShape(0, 0, 50, 100)
 	objects.bouncer.fixture = love.physics.newFixture(objects.bouncer.body, objects.bouncer.shape, 5)
 	objects.bouncer.fixture:setRestitution(1)
-	objects.bouncer.fixture:setUserData(objects.bouncer)
+	objects.bouncer.fixture:setUserData("enemy")
 	-- player.img = love.graphics.newImage('perfect.png')
+
+	objects.bouncer2 = {}
+	objects.bouncer2.body = love.physics.newBody(world, 200, 200, "dynamic")
+	objects.bouncer2.shape = love.physics.newRectangleShape(0, 0, 50, 100)
+	objects.bouncer2.fixture = love.physics.newFixture(objects.bouncer2.body, objects.bouncer2.shape, 5)
+	objects.bouncer2.fixture:setRestitution(1)
+	objects.bouncer2.fixture:setUserData("enemy")
 
 	-- physics callbacks
 	world:setCallbacks(beginContact)
@@ -45,15 +53,8 @@ function love.load()
 	love.graphics.setFont(mainFont)
 	score.x = 40
 	score.y = 40
-	score.count = 0
+	score.count = 10
 	score.rotation = 0
-end
-
-function beginContact(objA, objB, coll)
-	-- print(objA)
-	if objA:getUserData() == objects.player or objB:getUserData() == objects.player then
-		print("you're dead")
-	end
 end
 
 function score.update( plus )
@@ -62,6 +63,58 @@ function score.update( plus )
 	if score.rotation > (2 * math.pi) then
 		score.rotation = score.rotation - (2 * math.pi)
 	end
+	if score.count <= 0 then
+		print("game over")
+		gameSpeed = 0.15
+		score.count = 0
+	end
+end
+
+function collidePlayerBounds(a, b, coll)
+	print("you're dizzy")
+end
+
+function collidePlayerEnemy(a, b, coll)
+	print("pe")
+	score.update(-1)
+end
+
+function collideEnemyEnemy(a, b, coll)
+	print("zork")
+end
+
+function collideEnemyBounds(a, b, coll)
+	print("foo")
+end
+
+local collisions = {
+	["you"] = {
+		["bounds"] 	= function () collidePlayerBounds() end,
+		["enemy"]	= function () collidePlayerEnemy() end
+	},
+	["enemy"] = {
+		["bounds"]	= function () collideEnemyBounds() end,
+		["enemy"]	= function () collideEnemyEnemy() end,
+		["you"]		= nil
+	},
+	["bounds"] = {
+		["you"] 	= nil,
+		["enemy"]	= nil
+	}
+}
+
+function beginContact(objA, objB, coll)
+	-- UserData holds the 'class' of the colliding object
+	local a, b = objA:getUserData(), objB:getUserData()
+	-- sets 'nil' values to be "bounds" as they don't have fixtures
+	a = a or "bounds"
+	b = b or "bounds"
+
+	local act = collisions[a][b]
+	if act == nil then act = collisions[b][a] end
+
+	-- pass data to appropriate function
+	return act(objA, objB, coll)
 end
 
 -- user actions: function w/ optional table of arguments
@@ -97,7 +150,7 @@ function love.update( dt )
 	-- input handler
 	inputHandler()
 
-	world:update(dt)
+	world:update(dt * gameSpeed)
 end
 
 function love.draw()
@@ -109,6 +162,8 @@ function love.draw()
 
 	love.graphics.setColor(50, 50, 50) -- set the drawing color to grey for the bouncers
 	love.graphics.polygon("fill", objects.bouncer.body:getWorldPoints(objects.bouncer.shape:getPoints()))
+	love.graphics.setColor(70, 30, 80) -- set the drawing color to grey for the bouncers
+	love.graphics.polygon("fill", objects.bouncer2.body:getWorldPoints(objects.bouncer2.shape:getPoints()))
 end
 
 
