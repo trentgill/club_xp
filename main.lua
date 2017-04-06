@@ -5,16 +5,21 @@ score = {}
 local img_scale = 0.1
 local gameSpeed = 1
 
+local gameDims = {
+	["x"] = 650,
+	["y"] = 650
+}
+
 function love.load()
 	-- graphics setup
 	love.graphics.setBackgroundColor(104, 136, 200)
-	love.window.setMode(650, 650)
+	love.window.setMode(gameDims.x, gameDims.y)
 
 	-- physics environment
 	lPh = love.physics
 	lPh.setMeter(64)
 	world = lPh.newWorld(0, 0, true)
-	local w, h = love.graphics.getDimensions(); w, h = w/2, h/2
+	local w, h = gameDims.x/2, gameDims.y/2
 
 	objects = {}
 
@@ -29,16 +34,16 @@ function love.load()
 	objects.goal.loc = {}
 	local ogl = objects.goal.loc --alias
 	ogl.x1 = w -50
-	ogl.y1 =   1
+	ogl.y1 =   10
 	ogl.x2 = w +50
-	ogl.y2 =   1
+	ogl.y2 =   10
 	objects.goal.body = lPh.newBody(world, 0, 0)
 	objects.goal.shape = lPh.newEdgeShape( ogl.x1, ogl.y1, ogl.x2, ogl.y2 ) --1 px below edge
 	objects.goal.fixture = lPh.newFixture(objects.goal.body, objects.goal.shape, 1)
 	objects.goal.fixture:setUserData("goal")
 
 	objects.player = {}
-	objects.player.body = lPh.newBody(world, 650/2, 650/2, "dynamic")
+	objects.player.body = lPh.newBody(world, w, gameDims.y - 50, "dynamic")
 	objects.player.shape = lPh.newCircleShape(20)
 	objects.player.fixture = lPh.newFixture(objects.player.body, objects.player.shape, 1)
 	objects.player.fixture:setRestitution(0.9)
@@ -47,8 +52,7 @@ function love.load()
 
 	-- generate table to store enemies & make 2
 	objects.bouncer = {}
-	enemies.constructor( world, objects.bouncer, 400, 200 )
-	enemies.constructor( world, objects.bouncer, 200, 200 )
+	enemies.constructor( world, objects.bouncer, w, 50 )
 
 	-- physics callbacks
 	world:setCallbacks(beginContact)
@@ -64,7 +68,8 @@ end
 
 local lightbox = {
 	["status"] = 0,
-	["message"] = " "
+	["message"] = " ",
+	["colour"] = {0,255,0}
 }
 
 function score.gameover()
@@ -72,7 +77,9 @@ function score.gameover()
 	score.count = 0
 	lightbox.status = 1
 	lightbox.message = "YOU'RE DEAD"
-	print("game over")
+	lightbox.colour = {255,0,0}
+	world:setCallbacks(nil) -- disable collisions
+
 end
 
 function score.update( plus )
@@ -92,7 +99,6 @@ end
 
 local new_enemies = 0
 function collidePlayerEnemy(a, b, coll)
-	print("pe")
 	score.update(-1)
 	new_enemies = new_enemies + 1
 end
@@ -100,8 +106,9 @@ end
 function collidePlayerGoal( a,b,coll )
 	lightbox.status = 1
 	lightbox.message = "YOU WIN"
+	lightbox.colour = {0,150,220}
 	gameSpeed = 0.15
-	print("you win!")
+	world:setCallbacks(nil) -- disable collisions
 end
 
 function collideEnemyEnemy(a, b, coll)
@@ -191,6 +198,10 @@ function love.update( dt )
 	inputHandler()
 
 	-- gravity
+	local pX, pY = objects.player.body:getX(), objects.player.body:getY()
+	local w, h = love.graphics.getDimensions()
+	pX, pY = pX - (w/2), pY - (h/2)
+	world:setGravity(pX/4, pY/4) -- decrease gravitational pull
 
 	-- update physics
 	world:update(dt * gameSpeed)
@@ -214,10 +225,10 @@ function love.draw()
 
 	if lightbox.status == 1 then
 		-- draw the message window
-		w, h = love.graphics.getDimensions()
+		local w, h = love.graphics.getDimensions()
 		lg.setColor(255,255,255,127)
 		lg.polygon("fill", w,h,-w,h,-w,-h,w,-h)
-		lg.setColor(255,0,0)
+		lg.setColor(lightbox.colour[1],lightbox.colour[2],lightbox.colour[3])
 		lg.print(lightbox.message,w/2,h/2,0,1,1,30,30)
 	end
 end
