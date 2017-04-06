@@ -19,7 +19,17 @@ local function constructor( world, parent, x, y )
 	parent[n].fixture = lPh.newFixture(parent[n].body, parent[n].shape, 5)
 	parent[n].fixture:setRestitution(1)
 	parent[n].fixture:setUserData("enemy")
-	parent[n].body:setLinearVelocity( 10, 10)
+	parent[n].body:setLinearVelocity( math.random(-30,30), math.random(-30,30))
+	parent[n].body:setAngularVelocity( math.random(10) )
+end
+
+local function destructor( world, parent )
+	-- add a new entry in the enemy table
+	for ix,val in pairs(parent) do
+		parent[ix].fixture:destroy()
+		parent[ix].body:destroy()
+		parent[ix] = nil
+	end
 end
 
 local function process( world, parent, new )
@@ -34,6 +44,7 @@ end
 
 -- global namespace (like .h public declaration, to give global access)
 M.constructor = constructor
+M.destructor = destructor
 M.process = process
 
 
