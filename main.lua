@@ -14,6 +14,7 @@ function love.load()
 	-- graphics setup
 	love.graphics.setBackgroundColor(104, 136, 200)
 	love.window.setMode(gameDims.x, gameDims.y)
+	checkJoysticks()
 
 	-- physics environment
 	lPh = love.physics
@@ -199,7 +200,10 @@ end
 -- user actions: function w/ optional table of arguments
 local bindings = {
 	escape 	= function () love.event.quit() end,
+	start   = function () love.event.quit() end,
+
 	["return"]	= function () gamestate.reset() end,
+	b		= function () gamestate.reset() end,
 
 	a 		= function () objects.player.body:applyForce(-400,   0) end,
 	d 		= function () objects.player.body:applyForce( 400,   0) end,
@@ -208,16 +212,20 @@ local bindings = {
 
 	-- left,right,down,up = a,d,s,w,
 	left	= function () objects.player.body:applyForce(-400,   0) end,
+	dpleft  = function () objects.player.body:applyForce(-400,   0) end,
 	right	= function () objects.player.body:applyForce( 400,   0) end,
+	dpright = function () objects.player.body:applyForce( 400,   0) end,
 	down	= function () objects.player.body:applyForce(   0, 400) end,
-	up 		= function () objects.player.body:applyForce(   0,-400) end,
+	dpdown  = function () objects.player.body:applyForce(   0, 400) end,
+	up 	= function () objects.player.body:applyForce(   0,-400) end,
+	dpup    = function () objects.player.body:applyForce(   0,-400) end,
 
 	space 	= function ()
-					local x,y = objects.player.body:getLinearVelocity()
-					objects.player.body:applyForce(
+			local x,y = objects.player.body:getLinearVelocity()
+				    objects.player.body:applyForce(
 								-(x*5),
-								-(y*5))
-				end
+								-(y*5)) end
+	
 }
 
 -- stores list of currently held keys
@@ -230,6 +238,25 @@ function love.keypressed( k )
 end
 
 function love.keyreleased( k )
+	heldKeys[k] = nil
+end
+
+
+theJoy = {}
+function checkJoysticks()
+	local joysticks = love.joystick.getJoysticks()
+	for i,js in ipairs(joysticks) do
+		print(js:getName())
+		theJoy = js:getName()
+	end
+end
+
+function love.gamepadpressed( theJoy, k )
+	local action = bindings[k]
+	heldKeys[k] = action
+end
+
+function love.gamepadreleased( theJoy, k )
 	heldKeys[k] = nil
 end
 
