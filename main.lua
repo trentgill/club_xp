@@ -6,13 +6,14 @@ local img_scale = 0.1
 local gameSpeed = 1
 
 local gameDims = {
-	["x"] = 1100,
-	["y"] = 800
+	["x"] = 2560,
+	["y"] = 1440
 }
 
 function love.load()
 	-- graphics setup
 	love.graphics.setBackgroundColor(104, 136, 200)
+        love.window.setFullscreen(true, "normal")
 	love.window.setMode(gameDims.x, gameDims.y)
 	checkJoysticks()
 
@@ -243,12 +244,31 @@ end
 
 
 theJoy = {}
+jsID = {}
 function checkJoysticks()
 	local joysticks = love.joystick.getJoysticks()
 	for i,js in ipairs(joysticks) do
 		print(js:getName())
 		theJoy = js:getName()
+                jsID = js
+                if js:isVibrationSupported() then
+                    js:setVibration(1,1,0.2)
+                end
+            local axis1, axis2 = js:getAxes()
+            print("axis1", axis1)
+            print("axis2", axis2)
 	end
+    print(state)
+end
+
+function love.joystickaxis( gp, axis, val )
+    if gp == theJoy then
+        print(axis, val)
+    end
+end
+
+function love.joystickadded( js )
+    print(js)
 end
 
 function love.gamepadpressed( theJoy, k )
@@ -269,7 +289,12 @@ end
 function love.update( dt )
 	-- input handler
 	inputHandler()
-
+        local joysticks = love.joystick.getJoysticks()
+        for i,js in ipairs(joysticks) do
+            local axis1, axis2 = js:getAxes()
+            objects.player.body:applyForce(axis1*400, axis2*400)
+        end
+        -- local axis1, axis2 = js:getAxes()
 	-- gravity
 	local pX, pY = objects.player.body:getX(), objects.player.body:getY()
 	local w, h = love.graphics.getDimensions()
