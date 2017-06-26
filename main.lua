@@ -11,9 +11,12 @@ local gameDims = {
 }
 
 function love.load()
-	-- graphics setup
+        local windowMode = {}
+        _, _, windowMode = love.window.getMode()
+
+        -- graphics setup
 	love.graphics.setBackgroundColor(104, 136, 200)
-        love.window.setFullscreen(true, "normal")
+        gameDims.x, gameDims.y = love.window.getDesktopDimensions( windowMode.display )
 	love.window.setMode(gameDims.x, gameDims.y)
 	checkJoysticks()
 
