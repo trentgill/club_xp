@@ -129,13 +129,14 @@ function score.update( plus )
 end
 
 function collidePlayerBounds(a, b, coll)
-	print("you're dizzy")
+--	print("you're dizzy")
 end
 
 local new_enemies = 0
 function collidePlayerEnemy(a, b, coll)
 	score.update(-1)
 	new_enemies = new_enemies + 1
+        print(jsID:setVibration( 1, 1, 1 ))
 end
 
 function collidePlayerGoal( a,b,coll )
@@ -149,11 +150,11 @@ function collidePlayerGoal( a,b,coll )
 end
 
 function collideEnemyEnemy(a, b, coll)
-	print("zork")
+	--print("zork")
 end
 
 function collideEnemyBounds(a, b, coll)
-	print("foo")
+	--print("foo")
 end
 
 local collisions = {
@@ -209,20 +210,22 @@ local bindings = {
 	["return"]	= function () gamestate.reset() end,
 	b		= function () gamestate.reset() end,
 
+        x               = function () jumpy() end,
+
 	a 		= function () objects.player.body:applyForce(-400,   0) end,
 	d 		= function () objects.player.body:applyForce( 400,   0) end,
 	s 		= function () objects.player.body:applyForce(   0, 400) end,
 	w 		= function () objects.player.body:applyForce(   0,-400) end,
 
 	-- left,right,down,up = a,d,s,w,
-	left	= function () objects.player.body:applyForce(-400,   0) end,
-	dpleft  = function () objects.player.body:applyForce(-400,   0) end,
-	right	= function () objects.player.body:applyForce( 400,   0) end,
-	dpright = function () objects.player.body:applyForce( 400,   0) end,
-	down	= function () objects.player.body:applyForce(   0, 400) end,
-	dpdown  = function () objects.player.body:applyForce(   0, 400) end,
-	up 	= function () objects.player.body:applyForce(   0,-400) end,
-	dpup    = function () objects.player.body:applyForce(   0,-400) end,
+	left	= function () bodyMovement(-400,   0) end,
+	dpleft  = function () bodyMovement(-400,   0) end,
+	right	= function () bodyMovement( 400,   0) end,
+	dpright = function () bodyMovement( 400,   0) end,
+	down	= function () bodyMovement(   0, 400) end,
+	dpdown  = function () bodyMovement(   0, 400) end,
+	up 	= function () bodyMovement(   0,-400) end,
+	dpup    = function () bodyMovement(   0,-400) end,
 
 	space 	= function ()
 			local x,y = objects.player.body:getLinearVelocity()
@@ -231,6 +234,40 @@ local bindings = {
 								-(y*5)) end
 	
 }
+
+local jumpState = {
+    active = 0,
+    count = 1000,
+    angle = 0
+}
+
+function bodyMovement( x, y )
+    if jumpState.active == 1 then
+        -- use stick to set angle
+        if (x+y) > 50 then --
+            jumpState.angle = math.atan(y/x)
+        end
+    else
+        objects.player.body:applyForce( x, y )
+    end
+end
+
+function jumpy()
+    jumpState.active = 1
+    gameSpeed = 0.3
+    jumpState.count = jumpState.count * 1.03 + 30
+    if jumpState.count > 30000 then
+        jumpState.count = 30000
+    end
+end
+
+function love.joystickreleased( jsID, x )
+    jumpState.active = 0
+    gameSpeed = 1
+    objects.player.body:applyForce( 0, jumpState.count )
+    print(jumpState.count)
+    jumpState.count = 1000
+end
 
 -- stores list of currently held keys
 local heldKeys = {}
@@ -261,7 +298,6 @@ function checkJoysticks()
             print("axis1", axis1)
             print("axis2", axis2)
 	end
-    print(state)
 end
 
 function love.joystickaxis( gp, axis, val )
@@ -295,7 +331,7 @@ function love.update( dt )
         local joysticks = love.joystick.getJoysticks()
         for i,js in ipairs(joysticks) do
             local axis1, axis2 = js:getAxes()
-            objects.player.body:applyForce(axis1*400, axis2*400)
+            bodyMovement(axis1*400, axis2*400)
         end
         -- local axis1, axis2 = js:getAxes()
 	-- gravity
@@ -316,6 +352,18 @@ function love.draw()
 	lg.circle("fill", op.body:getX(), op.body:getY(), op.shape:getRadius())
 	local ogl = objects.goal.loc
 	lg.line(ogl.x1, ogl.y1, ogl.x2, ogl.y2)
+
+        if jumpState.active == 1 then
+            -- draw jump tick & circle
+            local xx = op.body:getX()
+            local yy = op.body:getY()
+            local rr = jumpState.count/50
+
+            print(jumpState.angle)
+            lg.circle("line", xx, yy, rr)
+            lg.line(xx, yy, xx + rr * math.cos(jumpState.angle),
+                            yy + rr * math.sin(jumpState.angle))
+        end
 
 	lg.setColor(50, 50, 50)
 	for i,ix in pairs(ob) do
